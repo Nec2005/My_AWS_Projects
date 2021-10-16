@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This template launches an EC2 with a security group that enables SSH and HTTP connection.
+  
+Resources:
+  MyServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-02e136e904f3da870
+      InstanceType: t2.micro
+      KeyName: firstkey # please use your own key
+      SecurityGroups:
+        - ilkSecGrp # add your own security group please
+      Tags:
+        - Key: Name
+          Value: Web Server of StackName
+        - Key: Department
+          Value: Personal 
+
+    
