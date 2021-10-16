@@ -8,18 +8,23 @@ Resources:
     Properties:
       ImageId: ami-02e136e904f3da870
       InstanceType: t2.micro
-      KeyName: firstkey.pem
+      KeyName: firstkey
       SecurityGroups:
         - ilkSecGrp
       Tags:
         - Key: Name 
           Value: Web Server of StackName
-      UserData: |
-        #!/bin/bash
-        sudo yum update -y
-        sudo yum install httpd -y
-        sudo chmod -R 777 /var/www/html
-        cd /var/www/html
-        wget 
-        sudo systemctl start httpd
-        sudo systemctl enable httpd
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install httpd -y
+          sudo chmod -R 777 /var/www/html
+          cd /var/www/html
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-101-kittens-carousel-static-website-ec2/static-web/index.html 
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-101-kittens-carousel-static-website-ec2/static-web/cat0.jpg
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-101-kittens-carousel-static-website-ec2/static-web/cat1.jpg
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-101-kittens-carousel-static-website-ec2/static-web/cat2.jpg
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-101-kittens-carousel-static-website-ec2/static-web/cat3.png
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
