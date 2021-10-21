@@ -1,0 +1,61 @@
+body{
+   background-color: black;
+   color: white; 
+}
+
+#container{
+    width: 80%;
+    margin: auto;
+}
+
+#title {
+    font-size: 90px;
+    text-align: center;
+    
+}
+
+.headings {
+    font-family: 'Lobster';
+}
+
+span {
+    color: red;
+}
+
+#image {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 350 px;
+    border-radius: 20px;
+}
+
+p {
+    text-align: center;
+    font-size: 24px;
+    margin-top: 45px;
+}
+
+#marvel {
+    font-size: 60px;
+}
+
+li {
+    font-size: 24 px;
+    line-height: 1.8;
+}
+
+#footer {
+    margin: 0;
+    padding: 0;
+}
+
+#link {
+    text-decoration: none;
+    color: red;
+}
+
+#link:hover{
+    color: white;
+    font-size: 36px;
+}
