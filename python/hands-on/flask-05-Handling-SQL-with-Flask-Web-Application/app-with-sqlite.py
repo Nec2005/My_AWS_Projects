@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 # - configure required environmental variables for SQLite
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./email.db' 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) 
