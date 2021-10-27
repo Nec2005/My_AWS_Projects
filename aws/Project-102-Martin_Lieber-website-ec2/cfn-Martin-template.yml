@@ -36,7 +36,18 @@ Resources:
       UserData: 
         Fn::Base64: !Sub |
           #!/bin/bash
-          yum update 
-
-
+          yum update -y
+          yum install httpd -y
+          yum install git -y
+          cd /var/www/html
+          FOLDER="https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-102-Martin_Lieber-website-ec2/Last_session_Martin_Lieber"
+          wget $FOLDER/index.html
+          wget $FOLDER/style.css
+          systemctl start httpd
+          systemctl enable httpd
 Outputs:
+  WebsiteURL:
+      Value: !Sub 
+        - http://${PublicAddress}
+        - PublicAddress: !GetAtt MyWebServerHost.PublicDnsName
+      Description: Martin Lieber Application URL
