@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This CloudFormation Template was written for running Roman Numerals Converter Application (Python Flask) deployed on AWS EC2 with Cloudformation and AWS CLI
+Parameters:
+  myKP:
+    Description: Select your myKP
+    Type: AWS::EC2::KeyPair::KeyName
+Resources:
+  mySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Enables SSH and HTTP" # Required
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+  myServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-02e136e904f3da870
+      InstanceType: t2.micro
+      KeyName: !Ref myKP
+      SecurityGroupIds:
+        - !Ref mySG
+      Tags:
+        - Key: Name 
+          Value: !Sub Web Server of  ${AWS::StackName} Stack
+      UserData: !Base64 |
+        #!/bin/bash
+        yum update -y
+        yum install httpd -y
+        FOLDER="https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-201-Roman-Numerals-Converter"
+        cd /var/www/html
+        wget $FOLDER/app.py
+        mkdir templates && cd templates
+        wget $FOLDER/templates/index.html
+        wget $FOLDER/templates/result.html
+        systemctl start httpd
+        systemctl enable httpd
+
+Outputs:
+  WebsiteURL:
+    Value: !Sub 
+      - http://${PublicAddress}
+      - PublicAddress: !GetAtt myServer.PublicDnsName
+    Description: URL of the Roman Numerals Converter Application
