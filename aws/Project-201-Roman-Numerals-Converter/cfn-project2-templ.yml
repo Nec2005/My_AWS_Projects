@@ -15,7 +15,6 @@ Resources:
           IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-
         - CidrIp: 0.0.0.0/0
           IpProtocol: tcp
           FromPort: 80
@@ -35,7 +34,9 @@ Resources:
         #!/bin/bash
         yum update -y
         yum install httpd -y
+        pip3 install flask
         FOLDER="https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-201-Roman-Numerals-Converter"
+        chmod -R 777 /var/www/html
         cd /var/www/html
         wget $FOLDER/app.py
         mkdir templates && cd templates
