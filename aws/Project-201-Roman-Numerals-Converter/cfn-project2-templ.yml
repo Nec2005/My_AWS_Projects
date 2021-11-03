@@ -22,7 +22,7 @@ Resources:
   myServer:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-02e136e904f3da870
+      ImageId: ami-01cc34ab2709337aa
       InstanceType: t2.micro
       KeyName: !Ref myKP
       SecurityGroupIds:
@@ -36,12 +36,12 @@ Resources:
         sudo pip3 install flask 
         FOLDER="https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-201-Roman-Numerals-Converter"
         mkdir project2 && cd project2 
-        wget $FOLDER/app.py
+        wget $FOLDER/myapp.py
         mkdir templates && cd templates
         wget $FOLDER/templates/index.html
         wget $FOLDER/templates/result.html
         cd ..
-        sudo python3 app.py
+        sudo python3 myapp.py
 Outputs:
   WebsiteURL:
     Value: !Sub 
