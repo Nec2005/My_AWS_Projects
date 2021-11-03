@@ -33,15 +33,15 @@ Resources:
       UserData: !Base64 |
         #!/bin/bash
         yum update -y
-        pip3 install flask
+        sudo pip3 install flask 
         FOLDER="https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-201-Roman-Numerals-Converter"
         mkdir project2 && cd project2 
         wget $FOLDER/app.py
+        mkdir templates && cd templates
         wget $FOLDER/templates/index.html
         wget $FOLDER/templates/result.html
-        systemctl start httpd
-        systemctl enable httpd
-
+        cd ..
+        sudo python3 app.py
 Outputs:
   WebsiteURL:
     Value: !Sub 
