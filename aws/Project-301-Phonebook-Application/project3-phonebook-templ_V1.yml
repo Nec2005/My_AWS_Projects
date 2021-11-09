@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  CloudFormation template for the Phonebook Application. This aims to create a phonebook application in Python and deployed as a web application with Flask on AWS Application Load Balancer with Auto Scaling Group of Elastic Compute Cloud (EC2) Instances and Relational Database Service (RDS) using AWS Cloudformation Service.
+Parameters:
+  
+  myKP:
+    Description: Enter the name of your Key Pair for SSH connection
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  mySubnets:
+    Description: Please select at least 2 subnets.
+    Type: List<AWS::EC2::Subnet::Id>
+ 
+  myVPC:
+    Description: Please select VPC 
+    Type: AWS::EC2::VPC::Id
+
+Resources:
+  mySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP ve SSH enable 
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          
+  myFORdb:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Database mySQL 
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+
+
+  myLT:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: ami-01cc34ab2709337aa
+        InstanceType: t2.micro
+        KeyName: !Ref myKP
+        SecurityGroupIds:
+          - !GetAtt mySG.GroupId
+        TagSpecifications:
+          - ResourceType: instance 
+            Tags: 
+              - Key: Name
+                Value: !Sub Web Server of ${AWS::StackName} Stack 
+        UserData: !Base64 |
+          #!/bin/bash
+          yum update -y 
+          yum install python3 -y 
+          pip3 install flask
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/phonebook-app.py
+          echo ${EndPoint} > dbserver.endpoint
+          mkdir templates && cd templates
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/add-update.html
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/index.html
+          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/delete.html
+          cd ..
+          python3 phonebook-app.py
+
+     
+
+  myTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 5
+      HealthCheckTimeoutSeconds: 3
+      HealthyThresholdCount: 5
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref myVPC
+
+  myELB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !GetAtt mySG.GroupId  
+      Subnets: !Ref mySubnets
+      Type: application
+
+  myListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: # Required
+        - Type: forward
+          TargetGroupArn: !Ref myTG
+      LoadBalancerArn: !Ref myELB
+      Port: 80
+      Protocol: HTTP
+
+  myASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs 
+      DesiredCapacity: "2"
+      HealthCheckGracePeriod: 60
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref myLT
+        Version: "1"
+      MaxSize: "3" # Required
+      MinSize: "1" # Required
+      TargetGroupARNs:
+        - !Ref myTG 
+
+  myCPUPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref myASG # Required
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization 
+        TargetValue: 70.0
+
+  
+
+  myDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: "20"
+      DBInstanceClass: db.t2.micro # Required
+      DBName: clarusway_phonebook
+      Engine: mysql
+      EngineVersion: "8.0.19"
+      MasterUserPassword: Clarusway1234
+      MasterUsername: admin
+      Port: "3306"
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !GetAtt mySG.GroupId
+
+  # myDBSG:
+  #   Type: AWS::RDS::DBSecurityGroup
+  #   Properties:
+  #     DBSecurityGroupIngress: # Required
+  #       - DBSecurityGroupName: Mydb Sec Grp
+  #       - EC2SecurityGroupId: !Ref myFORdb
+
+Outputs:
+  EndPoint:
+    Value: !GetAtt myDB.Endpoint.Address 
