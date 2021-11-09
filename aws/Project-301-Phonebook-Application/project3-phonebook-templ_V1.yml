@@ -40,7 +40,6 @@ Resources:
           FromPort: 3306
           ToPort: 3306
 
-
   myLT:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -55,20 +54,21 @@ Resources:
             Tags: 
               - Key: Name
                 Value: !Sub Web Server of ${AWS::StackName} Stack 
-        UserData: !Base64 |
-          #!/bin/bash
-          yum update -y 
-          yum install python3 -y 
-          pip3 install flask
-          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/phonebook-app.py
-          echo ${EndPoint} > dbserver.endpoint
-          mkdir templates && cd templates
-          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/add-update.html
-          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/index.html
-          wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/delete.html
-          cd ..
-          python3 phonebook-app.py
-
+        UserData: 
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y 
+            yum install python3 -y 
+            pip3 install flask
+            cd /home/ec2-user
+            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/phonebook-app.py
+            echo ${EndPoint} > dbserver.endpoint
+            mkdir templates && cd templates
+            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/add-update.html
+            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/index.html
+            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/delete.html
+            cd ..
+            python3 phonebook-app.py
      
 
   myTG:
@@ -105,7 +105,7 @@ Resources:
     Properties:
       AvailabilityZones: !GetAZs 
       DesiredCapacity: "2"
-      HealthCheckGracePeriod: 60
+      HealthCheckGracePeriod: 90
       HealthCheckType: ELB
       LaunchTemplate:
         LaunchTemplateId: !Ref myLT
@@ -125,8 +125,6 @@ Resources:
           PredefinedMetricType: ASGAverageCPUUtilization 
         TargetValue: 70.0
 
-  
-
   myDB:
     Type: AWS::RDS::DBInstance
     Properties:
@@ -140,7 +138,7 @@ Resources:
       Port: "3306"
       PubliclyAccessible: true
       VPCSecurityGroups:
-        - !GetAtt mySG.GroupId
+        - !GetAtt myFORdb.GroupId
 
   # myDBSG:
   #   Type: AWS::RDS::DBSecurityGroup
