@@ -100,7 +100,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 5
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckTimeoutSeconds: 3
       HealthyThresholdCount: 5
       Port: 80
       Protocol: HTTP
@@ -158,7 +158,7 @@ Resources:
       DBName: phonebook
       Engine: mysql
       EngineVersion: "8.0.19"
-      MasterUserPassword: tomas
+      MasterUserPassword: tomas8199
       DeleteAutomatedBackups: true
       MasterUsername: admin
       Port: "3306"
