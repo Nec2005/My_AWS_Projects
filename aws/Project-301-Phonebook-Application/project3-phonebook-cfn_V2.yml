@@ -53,7 +53,7 @@ Resources:
     Properties:
       GroupDescription: Allow connections only from Webserver 
       SecurityGroupIngress:
-        - SourceSecurityGroupId: !Ref mySG.GroupId
+        - SourceSecurityGroupId: !GetAtt mySG.GroupId
           IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
