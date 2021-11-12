@@ -171,8 +171,8 @@ Outputs:
     Value: !Join
       - ""
       - - "http://"
-        - !GetAtt myALB.DNSName 
+        - !GetAtt myELB.DNSName 
 
   RDSEndPoint:
     Description: 'The RDS Endpoint of MySQL DB'
-    Value: !GetAtt MyDB.Endpoint.Address
+    Value: !GetAtt myDB.Endpoint.Address
