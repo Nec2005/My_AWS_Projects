@@ -19,26 +19,45 @@ Resources:
   mySG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: HTTP ve SSH enable 
+      GroupDescription: HTTP ve SSH enable to ELB 
       SecurityGroupIngress:
-        - CidrIp: "0.0.0.0/0"
-          IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
         - CidrIp: "0.0.0.0/0"
           IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          
-  myFORdb:
+
+        - SourceSecurityGroupId: !GetAtt myELBSG.GroupId 
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref myVPC
+  
+  myELBSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Database mySQL 
+      GroupDescription: "Enables SSH and HTTP" # Required
       SecurityGroupIngress:
-        - CidrIp: "0.0.0.0/0"
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+      VpcId: !Ref myVPC 
+  
+  mydbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow connections only from Webserver 
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref mySG.GroupId
           IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
+
 
   myLT:
     Type: AWS::EC2::LaunchTemplate
@@ -55,27 +74,33 @@ Resources:
               - Key: Name
                 Value: !Sub Web Server of ${AWS::StackName} Stack 
         UserData: 
-          Fn::Base64: !Sub |
-            #!/bin/bash
-            yum update -y 
-            yum install python3 -y 
-            pip3 install flask
-            cd /home/ec2-user
-            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/phonebook-app.py
-            echo ${EndPoint} > dbserver.endpoint
-            mkdir templates && cd templates
-            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/add-update.html
-            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/index.html
-            wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/delete.html
-            cd ..
-            python3 phonebook-app.py
+          Fn::Base64: 
+            Fn::Sub:
+              - |
+                #!/bin/bash
+                yum update -y 
+                yum install python3 -y 
+                pip3 install flask
+                pip3 install flask-mysql
+                pip3 install sqlalchemy
+                pip3 install Flask-SQLAlchemy
+                cd /home/ec2-user
+                echo "${RDSendPoint}" > dbserver.endpoint
+                chmod 777 dbserver.endpoint
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/phonebook-app.py
+                mkdir templates && cd templates
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/add-update.html
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/index.html
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/delete.html
+                cd ..
+                python3 phonebook-app.py
+              - RDSendPoint: !GetAtt myDB.Endpoint.Address
      
-
   myTG:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 5
-      HealthCheckTimeoutSeconds: 3
+      HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 5
       Port: 80
       Protocol: HTTP
@@ -86,7 +111,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       SecurityGroups:
-        - !GetAtt mySG.GroupId  
+        - !GetAtt myELBSG.GroupId  
       Subnets: !Ref mySubnets
       Type: application
 
@@ -130,23 +155,24 @@ Resources:
     Properties:
       AllocatedStorage: "20"
       DBInstanceClass: db.t2.micro # Required
-      DBName: clarusway_phonebook
+      DBName: phonebook
       Engine: mysql
       EngineVersion: "8.0.19"
-      MasterUserPassword: Clarusway1234
+      MasterUserPassword: tomas
+      DeleteAutomatedBackups: true
       MasterUsername: admin
       Port: "3306"
-      PubliclyAccessible: true
       VPCSecurityGroups:
-        - !GetAtt myFORdb.GroupId
-
-  # myDBSG:
-  #   Type: AWS::RDS::DBSecurityGroup
-  #   Properties:
-  #     DBSecurityGroupIngress: # Required
-  #       - DBSecurityGroupName: Mydb Sec Grp
-  #       - EC2SecurityGroupId: !Ref myFORdb
+        - !GetAtt mydbSG.GroupId
 
 Outputs:
-  EndPoint:
-    Value: !GetAtt myDB.Endpoint.Address 
+  AppUrl:
+    Description: Url of the ELB
+    Value: !Join
+      - ""
+      - - "http://"
+        - !GetAtt myALB.DNSName 
+
+  RDSEndPoint:
+    Description: 'The RDS Endpoint of MySQL DB'
+    Value: !GetAtt MyDB.Endpoint.Address
