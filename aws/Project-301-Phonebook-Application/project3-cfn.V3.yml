@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  CloudFormation template for the Phonebook Application. This aims to create a phonebook application in Python and deployed as a web application with Flask on AWS Application Load Balancer with Auto Scaling Group of Elastic Compute Cloud (EC2) Instances and Relational Database Service (RDS) using AWS Cloudformation Service.
+Parameters:
+  
+  myKP:
+    Description: Enter the name of your Key Pair for SSH connection
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  mySubnets:
+    Description: Please select at least 2 subnets.
+    Type: List<AWS::EC2::Subnet::Id>
+ 
+  myVPC:
+    Description: Please select VPC 
+    Type: AWS::EC2::VPC::Id
+
+Resources:
+  mySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP ve SSH enable to ELB 
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+
+        - SourceSecurityGroupId: !GetAtt myELBSG.GroupId 
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref myVPC
+  
+  myELBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Enables SSH and HTTP" # Required
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+      VpcId: !Ref myVPC 
+  
+  mydbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow connections only from Webserver 
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !GetAtt mySG.GroupId
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+
+
+  myLT:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: ami-01cc34ab2709337aa
+        InstanceType: t2.micro
+        KeyName: !Ref myKP
+        SecurityGroupIds:
+          - !GetAtt mySG.GroupId
+        TagSpecifications:
+          - ResourceType: instance 
+            Tags: 
+              - Key: Name
+                Value: !Sub Web Server of ${AWS::StackName} Stack 
+        UserData: 
+          Fn::Base64: 
+            Fn::Sub:
+              - |
+                #!/bin/bash
+                yum update -y 
+                yum install python3 -y 
+                pip3 install flask
+                pip3 install flask-mysql
+                pip3 install sqlalchemy
+                pip3 install Flask-SQLAlchemy
+                cd /home/ec2-user
+                echo "${RDSendPoint}" > dbserver.endpoint
+                chmod 777 dbserver.endpoint
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/phonebook-app.py
+                mkdir templates && cd templates
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/add-update.html
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/index.html
+                wget https://raw.githubusercontent.com/Nec2005/My_AWS_Course_Projects/main/aws/Project-301-Phonebook-Application/templates/delete.html
+                cd ..
+                python3 phonebook-app.py
+              - RDSendPoint: !GetAtt myDB.Endpoint.Address
+     
+  myTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 5
+      HealthCheckTimeoutSeconds: 3
+      HealthyThresholdCount: 5
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref myVPC
+
+  myELB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !GetAtt myELBSG.GroupId  
+      Subnets: !Ref mySubnets
+      Type: application
+
+  myListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: # Required
+        - Type: forward
+          TargetGroupArn: !Ref myTG
+      LoadBalancerArn: !Ref myELB
+      Port: 80
+      Protocol: HTTP
+
+  myASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs 
+      DesiredCapacity: "2"
+      HealthCheckGracePeriod: 90
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref myLT
+        Version: "1"
+      MaxSize: "3" # Required
+      MinSize: "1" # Required
+      TargetGroupARNs:
+        - !Ref myTG 
+
+  myCPUPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref myASG # Required
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization 
+        TargetValue: 70.0
+
+  myDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: "20"
+      DBInstanceClass: db.t2.micro # Required
+      DBName: phonebook
+      Engine: mysql
+      EngineVersion: "8.0.19"
+      MasterUserPassword: tomas8199
+      DeleteAutomatedBackups: true
+      MasterUsername: admin
+      Port: "3306"
+      VPCSecurityGroups:
+        - !GetAtt mydbSG.GroupId
+
+Outputs:
+  AppUrl:
+    Description: Url of the ELB
+    Value: !Join
+      - ""
+      - - "http://"
+        - !GetAtt myELB.DNSName 
+
+  RDSEndPoint:
+    Description: 'The RDS Endpoint of MySQL DB'
+    Value: !GetAtt myDB.Endpoint.Address
